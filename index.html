@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHATVERSE - Live Chat</title>
+
+<style>
+:root {
+  --bg:#080e19;
+  --panel:#111b2b;
+  --card:#172337;
+  --text:#ffffff;
+  --muted:#98a8bd;
+  --accent:#00d9a6;
+  --border:#26354a;
+  --bubble:#1d3042;
+}
+
+body.light {
+  --bg:#edf2f7;
+  --panel:#ffffff;
+  --card:#f4f7fa;
+  --text:#172337;
+  --muted:#68778a;
+  --accent:#009c78;
+  --border:#dce4ec;
+  --bubble:#e3f5ee;
+}
+
+* {
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body {
+  font-family:Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  transition:.3s;
+}
+
+.app {
+  max-width:950px;
+  margin:auto;
+  padding:20px;
+}
+
+header {
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:17px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.brand {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.logo {
+  width:45px;
+  height:45px;
+  background:linear-gradient(135deg,#00d9a6,#008eae);
+  color:#07151a;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  font-size:25px;
+  font-weight:bold;
+}
+
+.brand h2 {
+  letter-spacing:2px;
+}
+
+small {
+  color:var(--muted);
+}
+
+button {
+  cursor:pointer;
+  border:none;
+  font-weight:bold;
+  transition:.25s;
+}
+
+button:hover {
+  transform:translateY(-2px);
+}
+
+.icon-btn,.logout {
+  padding:11px;
+  border-radius:10px;
+  background:var(--card);
+  color:var(--text);
+}
+
+.auth-section {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:75vh;
+  padding:20px 0;
+}
+
+.auth-card {
+  width:100%;
+  max-width:420px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:23px;
+  padding:30px;
+  text-align:center;
+  animation:appear .5s;
+}
+
+.auth-logo {
+  width:65px;
+  height:65px;
+  margin:0 auto 20px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,#00d9a6,#008eae);
+  color:#07151a;
+  border-radius:15px;
+  font-size:35px;
+  font-weight:bold;
+}
+
+.auth-card p {
+  color:var(--muted);
+  margin:10px 0 20px;
+}
+
+.tabs {
+  display:flex;
+  gap:10px;
+  background:var(--card);
+  padding:5px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+.tabs button {
+  flex:1;
+  padding:12px;
+  background:transparent;
+  color:var(--muted);
+  border-radius:9px;
+}
+
+.tabs button.active {
+  background:var(--accent);
+  color:#061b16;
+}
+
+input {
+  width:100%;
+  padding:15px;
+  margin-bottom:14px;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+  border-radius:11px;
+  outline:none;
+  font-size:15px;
+}
+
+input:focus {
+  border-color:var(--accent);
+}
+
+#authSubmit {
+  width:100%;
+  padding:15px;
+  background:var(--accent);
+  color:#061b16;
+  border-radius:11px;
+}
+
+.status {
+  font-size:13px;
+  overflow-wrap:anywhere;
+}
+
+.chat-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:25px 5px;
+  gap:10px;
+}
+
+.chat-heading p {
+  color:var(--muted);
+  font-size:13px;
+  margin-top:8px;
+}
+
+.online-dot {
+  display:inline-block;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 10px var(--accent);
+}
+
+.room-tag {
+  color:var(--accent);
+  border:1px solid var(--accent);
+  border-radius:20px;
+  padding:8px;
+  font-size:10px;
+}
+
+.messages {
+  height:55vh;
+  min-height:300px;
+  max-height:600px;
+  overflow-y:auto;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+}
+
+.message {
+  max-width:80%;
+  align-self:flex-start;
+  background:var(--bubble);
+  padding:12px;
+  border-radius:5px 16px 16px 16px;
+  animation:appear .3s;
+  overflow-wrap:anywhere;
+}
+
+.message.mine {
+  align-self:flex-end;
+  background:var(--accent);
+  color:#061b16;
+  border-radius:16px 5px 16px 16px;
+}
+
+.message-top {
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  font-size:11px;
+  margin-bottom:7px;
+  font-weight:bold;
+}
+
+.message-time {
+  font-size:10px;
+  opacity:.7;
+}
+
+.message-text {
+  font-size:15px;
+  line-height:1.5;
+  white-space:pre-wrap;
+}
+
+.delete-btn {
+  margin-top:8px;
+  background:transparent;
+  color:inherit;
+  text-decoration:underline;
+  font-size:11px;
+}
+
+.message-form {
+  display:flex;
+  gap:10px;
+  margin-top:15px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:15px;
+  padding:10px;
+}
+
+.message-form input {
+  border:none;
+  background:transparent;
+  margin:0;
+  min-width:0;
+}
+
+#sendBtn {
+  min-width:50px;
+  background:var(--accent);
+  color:#061b16;
+  border-radius:12px;
+  font-size:22px;
+}
+
+.footer {
+  text-align:center;
+  padding:18px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.loading {
+  margin:auto;
+  color:var(--muted);
+}
+
+@keyframes appear {
+  from {
+    opacity:0;
+    transform:translateY(12px);
+  }
+  to {
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+[hidden] {
+  display:none !important;
+}
+
+@media(max-width:600px) {
+  .app {
+    padding:10px;
+  }
+  .auth-card {
+    padding:22px 17px;
+  }
+  .messages {
+    height:58vh;
+  }
+  .message {
+    max-width:90%;
+  }
+  .brand h2 {
+    font-size:15px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <div class="brand">
+    <div class="logo">C</div>
+    <div>
+      <h2>CHATVERSE</h2>
+      <small>Connect with everyone</small>
+    </div>
+  </div>
+
+  <div>
+    <button class="icon-btn" id="themeBtn">☀️</button>
+    <button class="logout" id="logoutBtn" hidden>Logout</button>
+  </div>
+</header>
+
+<main>
+
+<section id="authSection" class="auth-section">
+  <div class="auth-card">
+
+    <div class="auth-logo">C</div>
+
+    <h2>Welcome to Chatverse</h2>
+    <p>Connect. Chat. Share.</p>
+
+    <div class="tabs">
+      <button id="loginTab" class="active">Login</button>
+      <button id="signupTab">Sign Up</button>
+    </div>
+
+    <form id="authForm">
+
+      <input id="nameInput"
+      type="text"
+      placeholder="Your Name"
+      maxlength="25"
+      autocomplete="nickname"
+      hidden>
+
+      <input id="emailInput"
+      type="email"
+      placeholder="Email Address"
+      required>
+
+      <input id="passwordInput"
+      type="password"
+      placeholder="Password (6+ characters)"
+      minlength="6"
+      required>
+
+      <button type="submit" id="authSubmit">
+        Login to Chat
+      </button>
+
+    </form>
+
+    <p id="authMessage" class="status"></p>
+
+  </div>
+</section>
+
+<section id="chatSection" hidden>
+
+  <div class="chat-heading">
+    <div>
+      <h2>🌍 Global Chat Room</h2>
+      <p><span class="online-dot"></span> Live Community Chat</p>
+    </div>
+    <div class="room-tag">PUBLIC ROOM</div>
+  </div>
+
+  <div id="messages" class="messages">
+    <div class="loading">Loading Messages...</div>
+  </div>
+
+  <form id="messageForm" class="message-form">
+
+    <input
+      id="messageInput"
+      type="text"
+      placeholder="Type your message..."
+      maxlength="1000"
+      autocomplete="off"
+      required>
+
+    <button type="submit" id="sendBtn">➤</button>
+
+  </form>
+
+  <div class="footer">
+    Be respectful. Keep the conversation friendly.
+  </div>
+
+</section>
+
+</main>
+</div>
+
+<script type="module">
+
+// FIREBASE IMPORTS
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+// FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey:"YOUR_API_KEY",
+  authDomain:"YOUR_PROJECT.firebaseapp.com",
+  projectId:"YOUR_PROJECT_ID",
+  storageBucket:"YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId:"YOUR_SENDER_ID",
+  appId:"YOUR_APP_ID"
+};
+
+// INITIALIZE
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ELEMENTS
+const authSection = document.getElementById("authSection");
+const chatSection = document.getElementById("chatSection");
+const authForm = document.getElementById("authForm");
+const nameInput = document.getElementById("nameInput");
+const emailInput = document.getElementById("emailInput");
+const passwordInput = document.getElementById("passwordInput");
+const authSubmit = document.getElementById("authSubmit");
+const authMessage = document.getElementById("authMessage");
+const loginTab = document.getElementById("loginTab");
+const signupTab = document.getElementById("signupTab");
+const messageForm = document.getElementById("messageForm");
+const messageInput = document.getElementById("messageInput");
+const messages = document.getElementById("messages");
+const logoutBtn = document.getElementById("logoutBtn");
+const themeBtn = document.getElementById("themeBtn");
+
+let mode = "login";
+let currentUser = null;
+let unsubscribeMessages = null;
+
+// LOGIN / SIGNUP MODE
+function setMode(value) {
+  mode = value;
+  nameInput.hidden = mode !== "signup";
+  nameInput.required = mode === "signup";
+
+  loginTab.classList.toggle("active", mode === "login");
+  signupTab.classList.toggle("active", mode === "signup");
+
+  authSubmit.textContent =
+    mode === "login" ? "Login to Chat" : "Create Account";
+
+  passwordInput.autocomplete =
+    mode === "login" ? "current-password" : "new-password";
+
+  authMessage.textContent = "";
+}
+
+loginTab.onclick = () => setMode("login");
+signupTab.onclick = () => setMode("signup");
+
+// AUTHENTICATION
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  const name = nameInput.value.trim();
+
+  if (mode === "signup" && name.length < 2) {
+    authMessage.textContent = "Enter a valid name.";
+    return;
+  }
+
+  authSubmit.disabled = true;
+  authMessage.textContent = "Please wait...";
+
+  try {
+    if (mode === "signup") {
+
+      const result = await createUserWithEmailAndPassword(
+        auth,email,password
+      );
+
+      await updateProfile(result.user,{
+        displayName:name
+      });
+
+    } else {
+
+      await signInWithEmailAndPassword(
+        auth,email,password
+      );
+
+    }
+
+    authForm.reset();
+
+  } catch(error) {
+    authMessage.textContent = error.message;
+  } finally {
+    authSubmit.disabled = false;
+  }
+});
+
+// USER LOGIN STATE
+onAuthStateChanged(auth,(user) => {
+
+  currentUser = user;
+
+  if(user) {
+    authSection.hidden = true;
+    chatSection.hidden = false;
+    logoutBtn.hidden = false;
+    loadMessages();
+  } else {
+    authSection.hidden = false;
+    chatSection.hidden = true;
+    logoutBtn.hidden = true;
+
+    if(unsubscribeMessages) {
+      unsubscribeMessages();
+      unsubscribeMessages = null;
+    }
+  }
+
+});
+
+// LOGOUT
+logoutBtn.onclick = async () => {
+  await signOut(auth);
+};
+
+// SEND MESSAGE
+messageForm.addEventListener("submit",async(e) => {
+
+  e.preventDefault();
+
+  const text = messageInput.value.trim();
+
+  if(!text || !currentUser) return;
+
+  const sendBtn = document.getElementById("sendBtn");
+  sendBtn.disabled = true;
+
+  try {
+
+    await addDoc(collection(db,"messages"),{
+      uid:currentUser.uid,
+      name:currentUser.displayName || "User",
+      text:text,
+      createdAt:serverTimestamp()
+    });
+
+    messageInput.value = "";
+    messageInput.focus();
+
+  } catch(error) {
+    alert("Message failed: " + error.message);
+  } finally {
+    sendBtn.disabled = false;
+  }
+
+});
+
+// LOAD LIVE MESSAGES
+function loadMessages() {
+
+  if(unsubscribeMessages) {
+    unsubscribeMessages();
+  }
+
+  const q = query(
+    collection(db,"messages"),
+    orderBy("createdAt","asc"),
+    limit(100)
+  );
+
+  unsubscribeMessages = onSnapshot(q,(snapshot) => {
+
+    messages.replaceChildren();
+
+    if(snapshot.empty) {
+      const empty = document.createElement("div");
+      empty.className = "loading";
+      empty.textContent = "No messages yet. Start chatting!";
+      messages.appendChild(empty);
+      return;
+    }
+
+    snapshot.forEach((messageDoc) => {
+
+      const data = messageDoc.data();
+
+      const box = document.createElement("div");
+      box.className = "message";
+
+      const mine = data.uid === currentUser.uid;
+
+      if(mine) box.classList.add("mine");
+
+      const top = document.createElement("div");
+      top.className = "message-top";
+
+      const username = document.createElement("span");
+      username.textContent = mine ? "You" : (data.name || "User");
+
+      const time = document.createElement("span");
+      time.className = "message-time";
+
+      time.textContent = data.createdAt
+        ? data.createdAt.toDate().toLocaleTimeString([], {
+            hour:"2-digit",
+            minute:"2-digit"
+          })
+        : "Sending...";
+
+      const body = document.createElement("div");
+      body.className = "message-text";
+      body.textContent = data.text || "";
+
+      top.append(username,time);
+      box.append(top,body);
+
+      if(mine) {
+
+        const del = document.createElement("button");
+        del.className = "delete-btn";
+        del.textContent = "Delete";
+
+        del.onclick = async () => {
+
+          if(!confirm("Delete this message?")) return;
+
+          try {
+            await deleteDoc(doc(db,"messages",messageDoc.id));
+          } catch(error) {
+            alert(error.message);
+          }
+
+        };
+
+        box.appendChild(del);
+      }
+
+      messages.appendChild(box);
+
+    });
+
+    messages.scrollTop = messages.scrollHeight;
+
+  },(error) => {
+    messages.textContent = "Unable to load: " + error.message;
+  });
+
+}
+
+// DARK / LIGHT MODE
+function applyTheme(theme) {
+
+  document.body.classList.toggle("light",theme === "light");
+
+  themeBtn.textContent =
+    theme === "light" ? "🌙" : "☀️";
+}
+
+let savedTheme = localStorage.getItem("chatTheme") || "dark";
+
+applyTheme(savedTheme);
+
+themeBtn.onclick = () => {
+
+  savedTheme =
+    savedTheme === "dark" ? "light" : "dark";
+
+  localStorage.setItem("chatTheme",savedTheme);
+
+  applyTheme(savedTheme);
+
+};
+
+</script>
+
+</body>
+</html>
