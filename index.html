@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,6 +57,7 @@ header {
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:10px;
 }
 
 .brand {
@@ -64,16 +66,19 @@ header {
   gap:12px;
 }
 
-.logo {
-  width:45px;
-  height:45px;
+.logo,.auth-logo {
   background:linear-gradient(135deg,#00d9a6,#008eae);
   color:#07151a;
   display:grid;
   place-items:center;
+  font-weight:bold;
+}
+
+.logo {
+  width:45px;
+  height:45px;
   border-radius:13px;
   font-size:25px;
-  font-weight:bold;
 }
 
 .brand h2 {
@@ -93,6 +98,12 @@ button {
 
 button:hover {
   transform:translateY(-2px);
+}
+
+button:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+  transform:none;
 }
 
 .icon-btn,.logout {
@@ -125,13 +136,8 @@ button:hover {
   width:65px;
   height:65px;
   margin:0 auto 20px;
-  display:grid;
-  place-items:center;
-  background:linear-gradient(135deg,#00d9a6,#008eae);
-  color:#07151a;
   border-radius:15px;
   font-size:35px;
-  font-weight:bold;
 }
 
 .auth-card p {
@@ -188,6 +194,7 @@ input:focus {
 .status {
   font-size:13px;
   overflow-wrap:anywhere;
+  line-height:1.5;
 }
 
 .chat-heading {
@@ -264,6 +271,7 @@ input:focus {
 .message-time {
   font-size:10px;
   opacity:.7;
+  white-space:nowrap;
 }
 
 .message-text {
@@ -315,6 +323,7 @@ input:focus {
 .loading {
   margin:auto;
   color:var(--muted);
+  text-align:center;
 }
 
 @keyframes appear {
@@ -336,15 +345,19 @@ input:focus {
   .app {
     padding:10px;
   }
+
   .auth-card {
     padding:22px 17px;
   }
+
   .messages {
     height:58vh;
   }
+
   .message {
     max-width:90%;
   }
+
   .brand h2 {
     font-size:15px;
   }
@@ -382,8 +395,8 @@ input:focus {
     <p>Connect. Chat. Share.</p>
 
     <div class="tabs">
-      <button id="loginTab" class="active">Login</button>
-      <button id="signupTab">Sign Up</button>
+      <button type="button" id="loginTab" class="active">Login</button>
+      <button type="button" id="signupTab">Sign Up</button>
     </div>
 
     <form id="authForm">
@@ -398,12 +411,14 @@ input:focus {
       <input id="emailInput"
       type="email"
       placeholder="Email Address"
+      autocomplete="email"
       required>
 
       <input id="passwordInput"
       type="password"
       placeholder="Password (6+ characters)"
       minlength="6"
+      autocomplete="current-password"
       required>
 
       <button type="submit" id="authSubmit">
@@ -412,7 +427,7 @@ input:focus {
 
     </form>
 
-    <p id="authMessage" class="status"></p>
+    <p id="authMessage" class="status" aria-live="polite"></p>
 
   </div>
 </section>
@@ -427,7 +442,7 @@ input:focus {
     <div class="room-tag">PUBLIC ROOM</div>
   </div>
 
-  <div id="messages" class="messages">
+  <div id="messages" class="messages" aria-live="polite">
     <div class="loading">Loading Messages...</div>
   </div>
 
@@ -457,8 +472,14 @@ input:focus {
 <script type="module">
 
 // FIREBASE IMPORTS
+
 import { initializeApp }
 from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+
+import {
+  getAnalytics,
+  isSupported
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
 
 import {
   getAuth,
@@ -482,45 +503,113 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-// FIREBASE CONFIG
+
+// FIREBASE CONFIGURATION
+
 const firebaseConfig = {
-  apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_PROJECT.firebaseapp.com",
-  projectId:"YOUR_PROJECT_ID",
-  storageBucket:"YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId:"YOUR_SENDER_ID",
-  appId:"YOUR_APP_ID"
+  apiKey: "AIzaSyB1z53J9UZBflwxZQo1UpW79oBjcHiv9Y8",
+  authDomain: "beon-3c213.firebaseapp.com",
+  projectId: "beon-3c213",
+  storageBucket: "beon-3c213.firebasestorage.app",
+  messagingSenderId: "955374345659",
+  appId: "1:955374345659:web:6fff277f86d9349d71f89e",
+  measurementId: "G-2P78FLQE9E"
 };
 
-// INITIALIZE
+
+// INITIALIZE FIREBASE
+
 const app = initializeApp(firebaseConfig);
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Analytics is optional and may not be supported in every browser.
+isSupported()
+  .then((supported) => {
+    if (supported) {
+      getAnalytics(app);
+    }
+  })
+  .catch((error) => {
+    console.warn("Analytics unavailable:", error);
+  });
+
+
 // ELEMENTS
+
 const authSection = document.getElementById("authSection");
 const chatSection = document.getElementById("chatSection");
+
 const authForm = document.getElementById("authForm");
 const nameInput = document.getElementById("nameInput");
 const emailInput = document.getElementById("emailInput");
 const passwordInput = document.getElementById("passwordInput");
 const authSubmit = document.getElementById("authSubmit");
 const authMessage = document.getElementById("authMessage");
+
 const loginTab = document.getElementById("loginTab");
 const signupTab = document.getElementById("signupTab");
+
 const messageForm = document.getElementById("messageForm");
 const messageInput = document.getElementById("messageInput");
 const messages = document.getElementById("messages");
+const sendBtn = document.getElementById("sendBtn");
+
 const logoutBtn = document.getElementById("logoutBtn");
 const themeBtn = document.getElementById("themeBtn");
+
+
+// VARIABLES
 
 let mode = "login";
 let currentUser = null;
 let unsubscribeMessages = null;
 
+
+// ERROR MESSAGE
+
+function friendlyError(error) {
+
+  const errors = {
+    "auth/email-already-in-use":
+      "This email is already registered.",
+
+    "auth/invalid-email":
+      "Please enter a valid email.",
+
+    "auth/weak-password":
+      "Password must contain at least 6 characters.",
+
+    "auth/invalid-credential":
+      "Incorrect email or password.",
+
+    "auth/user-not-found":
+      "Account not found.",
+
+    "auth/wrong-password":
+      "Incorrect password.",
+
+    "auth/too-many-requests":
+      "Too many attempts. Please try again later.",
+
+    "auth/network-request-failed":
+      "Check your internet connection.",
+
+    "permission-denied":
+      "Permission denied. Check Firebase Firestore Rules."
+  };
+
+  return errors[error.code] || error.message || "Something went wrong.";
+}
+
+
 // LOGIN / SIGNUP MODE
+
 function setMode(value) {
+
   mode = value;
+
   nameInput.hidden = mode !== "signup";
   nameInput.required = mode === "signup";
 
@@ -539,8 +628,11 @@ function setMode(value) {
 loginTab.onclick = () => setMode("login");
 signupTab.onclick = () => setMode("signup");
 
+
 // AUTHENTICATION
+
 authForm.addEventListener("submit", async (e) => {
+
   e.preventDefault();
 
   const email = emailInput.value.trim();
@@ -556,142 +648,209 @@ authForm.addEventListener("submit", async (e) => {
   authMessage.textContent = "Please wait...";
 
   try {
+
     if (mode === "signup") {
 
       const result = await createUserWithEmailAndPassword(
-        auth,email,password
+        auth,
+        email,
+        password
       );
 
-      await updateProfile(result.user,{
-        displayName:name
+      await updateProfile(result.user, {
+        displayName: name
       });
 
     } else {
 
       await signInWithEmailAndPassword(
-        auth,email,password
+        auth,
+        email,
+        password
       );
 
     }
 
     authForm.reset();
+    authMessage.textContent = "";
 
   } catch(error) {
-    authMessage.textContent = error.message;
+
+    authMessage.textContent = friendlyError(error);
+
   } finally {
+
     authSubmit.disabled = false;
+
   }
+
 });
 
+
 // USER LOGIN STATE
-onAuthStateChanged(auth,(user) => {
+
+onAuthStateChanged(auth, (user) => {
 
   currentUser = user;
 
-  if(user) {
+  if (user) {
+
     authSection.hidden = true;
     chatSection.hidden = false;
     logoutBtn.hidden = false;
+
     loadMessages();
+
   } else {
+
     authSection.hidden = false;
     chatSection.hidden = true;
     logoutBtn.hidden = true;
 
-    if(unsubscribeMessages) {
+    if (unsubscribeMessages) {
       unsubscribeMessages();
       unsubscribeMessages = null;
     }
+
   }
 
 });
 
+
 // LOGOUT
+
 logoutBtn.onclick = async () => {
-  await signOut(auth);
+
+  logoutBtn.disabled = true;
+
+  try {
+
+    await signOut(auth);
+
+  } catch(error) {
+
+    alert(friendlyError(error));
+
+  } finally {
+
+    logoutBtn.disabled = false;
+
+  }
+
 };
 
+
 // SEND MESSAGE
-messageForm.addEventListener("submit",async(e) => {
+
+messageForm.addEventListener("submit", async (e) => {
 
   e.preventDefault();
 
   const text = messageInput.value.trim();
 
-  if(!text || !currentUser) return;
+  if (!text || !currentUser) return;
 
-  const sendBtn = document.getElementById("sendBtn");
+  if (text.length > 1000) {
+    alert("Message is too long.");
+    return;
+  }
+
   sendBtn.disabled = true;
 
   try {
 
-    await addDoc(collection(db,"messages"),{
-      uid:currentUser.uid,
-      name:currentUser.displayName || "User",
-      text:text,
-      createdAt:serverTimestamp()
+    await addDoc(collection(db, "messages"), {
+
+      uid: currentUser.uid,
+
+      name: currentUser.displayName || "User",
+
+      text: text,
+
+      createdAt: serverTimestamp()
+
     });
 
     messageInput.value = "";
     messageInput.focus();
 
   } catch(error) {
-    alert("Message failed: " + error.message);
+
+    alert("Message failed: " + friendlyError(error));
+
   } finally {
+
     sendBtn.disabled = false;
+
   }
 
 });
 
+
 // LOAD LIVE MESSAGES
+
 function loadMessages() {
 
-  if(unsubscribeMessages) {
+  if (unsubscribeMessages) {
     unsubscribeMessages();
   }
 
+  messages.textContent = "Loading Messages...";
+
   const q = query(
-    collection(db,"messages"),
-    orderBy("createdAt","asc"),
+    collection(db, "messages"),
+    orderBy("createdAt", "desc"),
     limit(100)
   );
 
-  unsubscribeMessages = onSnapshot(q,(snapshot) => {
+  unsubscribeMessages = onSnapshot(q, (snapshot) => {
 
     messages.replaceChildren();
 
-    if(snapshot.empty) {
+    if (snapshot.empty) {
+
       const empty = document.createElement("div");
+
       empty.className = "loading";
       empty.textContent = "No messages yet. Start chatting!";
+
       messages.appendChild(empty);
+
       return;
     }
 
-    snapshot.forEach((messageDoc) => {
+    // Show oldest to newest within the latest 100 messages
+    const docs = [...snapshot.docs].reverse();
+
+    docs.forEach((messageDoc) => {
 
       const data = messageDoc.data();
 
       const box = document.createElement("div");
       box.className = "message";
 
-      const mine = data.uid === currentUser.uid;
+      const mine = data.uid === currentUser?.uid;
 
-      if(mine) box.classList.add("mine");
+      if (mine) {
+        box.classList.add("mine");
+      }
 
       const top = document.createElement("div");
       top.className = "message-top";
 
       const username = document.createElement("span");
-      username.textContent = mine ? "You" : (data.name || "User");
+
+      username.textContent = mine
+        ? "You"
+        : (data.name || "User");
 
       const time = document.createElement("span");
       time.className = "message-time";
 
       time.textContent = data.createdAt
         ? data.createdAt.toDate().toLocaleTimeString([], {
-            hour:"2-digit",
-            minute:"2-digit"
+            hour: "2-digit",
+            minute: "2-digit"
           })
         : "Sending...";
 
@@ -699,28 +858,37 @@ function loadMessages() {
       body.className = "message-text";
       body.textContent = data.text || "";
 
-      top.append(username,time);
-      box.append(top,body);
+      top.append(username, time);
+      box.append(top, body);
 
-      if(mine) {
+      if (mine) {
 
         const del = document.createElement("button");
+
         del.className = "delete-btn";
         del.textContent = "Delete";
 
         del.onclick = async () => {
 
-          if(!confirm("Delete this message?")) return;
+          if (!confirm("Delete this message?")) return;
+
+          del.disabled = true;
 
           try {
-            await deleteDoc(doc(db,"messages",messageDoc.id));
+
+            await deleteDoc(doc(db, "messages", messageDoc.id));
+
           } catch(error) {
-            alert(error.message);
+
+            alert(friendlyError(error));
+            del.disabled = false;
+
           }
 
         };
 
         box.appendChild(del);
+
       }
 
       messages.appendChild(box);
@@ -729,19 +897,25 @@ function loadMessages() {
 
     messages.scrollTop = messages.scrollHeight;
 
-  },(error) => {
-    messages.textContent = "Unable to load: " + error.message;
+  }, (error) => {
+
+    messages.textContent =
+      "Unable to load messages: " + friendlyError(error);
+
   });
 
 }
 
+
 // DARK / LIGHT MODE
+
 function applyTheme(theme) {
 
-  document.body.classList.toggle("light",theme === "light");
+  document.body.classList.toggle("light", theme === "light");
 
   themeBtn.textContent =
     theme === "light" ? "🌙" : "☀️";
+
 }
 
 let savedTheme = localStorage.getItem("chatTheme") || "dark";
@@ -753,7 +927,7 @@ themeBtn.onclick = () => {
   savedTheme =
     savedTheme === "dark" ? "light" : "dark";
 
-  localStorage.setItem("chatTheme",savedTheme);
+  localStorage.setItem("chatTheme", savedTheme);
 
   applyTheme(savedTheme);
 
