@@ -136,6 +136,28 @@ button{cursor:pointer;border:0}
  .composer,.post{padding:13px}
  .chat-messages{height:55vh}
 }
+  .img-modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.9); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.img-modal.hidden { display: none !important; }
+.img-modal img {
+  max-width: 100%; max-height: 90vh; object-fit: contain;
+  border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+}
+.close-modal {
+  position: absolute; top: 20px; right: 30px; color: white;
+  font-size: 45px; font-weight: bold; cursor: pointer;
+  background: transparent; border: 0; padding: 10px; z-index: 1001;
+}
+.post-media img, .bubble img, #mediaFeed img {
+  cursor: pointer; transition: opacity 0.2s;
+}
+.post-media img:hover, .bubble img:hover, #mediaFeed img:hover {
+  opacity: 0.92;
+}
+
 </style>
 </head>
 <body>
@@ -399,31 +421,34 @@ onAuthStateChanged(auth, async current => {
 
 $("logoutBtn").onclick = async () => { try{ await signOut(auth); }catch(e){alert(e.message);} };
 
-function listenGlobalMessages(){
-  globalUnsubscribe.forEach(unsub => unsub());
-  globalUnsubscribe = [];
-
-  const q = query(collection(db,"conversations"), where("participants", "array-contains", user.uid));
-  const unsubConv = onSnapshot(q, snap => {
-    snap.docChanges().forEach(change => {
-      const convId = change.doc.id;
-      const msgRef = collection(db,"conversations", convId, "messages");
-      const msgQ = query(msgRef, orderBy("createdAt", "desc"), limit(1));
-      
-      const unsubMsg = onSnapshot(msgQ, msgSnap => {
-        msgSnap.docChanges().forEach(mChange => {
-          if (mChange.type === "added") {
-            const msgData = mChange.doc.data();
-            const msgTime = msgData.createdAt?.toMillis ? msgData.createdAt.toMillis() : Date.now();
-            const isRecent = (Date.now() - msgTime) < 15000;
+    function listenDM(){
+      if(stopDM)stopDM();
+      if(!activeConversation)return;
+      const q=query(collection(db,"conversations",activeConversation,"messages"),orderBy("createdAt","asc"),limit(100));
+      stopDM=onSnapshot(q,snap=>{
+        const area=$("dmMessages");area.replaceChildren();
+        if(snap.empty){area.innerHTML='<div class="empty">Say hello and start the conversation.</div>';return;}
+        snap.forEach(d=>{
+          const m=d.data(),bubble=document.createElement("div");
+          bubble.className="bubble"+(m.uid===user.uid?" mine":"");
+          if(m.text){const t=document.createElement("div");t.textContent=m.text;bubble.append(t);}
+          if(m.media){
+            const el=document.createElement(m.media.type==="video"?"video":"img");el.src=m.media.url;
+            if(m.media.type==="video")el.controls=true;else el.alt="Shared media";
             
-            if (msgData.uid !== user.uid && isRecent) {
-              playNotificationSound();
-              showBrowserNotification("New Message on Connect", msgData.text || "Shared a photo/video attachment");
+            // 👉 ഈ ചെറിയ കോഡ് ഇവിടെയാണ് ചേർക്കേണ്ടത്:
+            if(m.media.type === "image"){
+              el.onclick = () => openImageModal(m.media.url);
             }
+
+            bubble.append(el);
           }
+          const tm=document.createElement("small");tm.textContent=safeTime(m.createdAt);bubble.append(tm);area.append(bubble);
         });
-      });
+        area.scrollTop=area.scrollHeight;
+      },e=>{ $("dmMessages").textContent="Chat error: "+e.message; });
+    }
+
       globalUnsubscribe.push(unsubMsg);
     });
   });
@@ -513,7 +538,11 @@ function buildPost(postDoc){
     const grid=document.createElement("div");grid.className="post-media"+(p.media.length===1?" one":"");
     p.media.slice(0,4).forEach(m=>{
       const el=document.createElement(m.type==="video"?"video":"img");
-      el.src=m.url;
+el.src=m.url;
+if(m.type === "image"){
+  el.onclick = () => openImageModal(m.url);
+  }
+  
       if(m.type==="video"){el.controls=true;el.preload="metadata";}else{el.alt="Shared photo";el.loading="lazy";}
       grid.append(el);
     });article.append(grid);
@@ -682,7 +711,38 @@ async function loadMediaFeed(){
   try{
     const snap=await getDocs(query(collection(db,"posts"),orderBy("createdAt","desc"),limit(50)));
     let found=0;
+    snap.forEach(d=>{async function loadMediaFeed(){
+  const target=$("mediaFeed");target.replaceChildren();
+  try{
+    const snap=await getDocs(query(collection(db,"posts"),orderBy("createdAt","desc"),limit(50)));
+    let found=0;
     snap.forEach(d=>{
+      const p=d.data();
+      if(p.media?.length){found++;const card=document.createElement("div");card.className="post panel";
+        const h=document.createElement("strong");h.textContent=p.name||"Member";card.append(h);
+        if(p.text){const t=document.createElement("p");t.className="post-text";t.textContent=p.text;card.append(t);}
+        const grid=document.createElement("div");grid.className="post-media";
+        
+        p.media.forEach(m=>{
+          const el=document.createElement(m.type==="video"?"video":"img");
+          el.src=m.url;
+          if(m.type==="video")el.controls=true;
+          else el.alt="Shared photo";
+          
+          // 👉 ഈ ചെറിയ കോഡ് ഇവിടെയാണ് ചേർക്കേണ്ടത്:
+          if(m.type === "image"){
+            el.onclick = () => openImageModal(m.url);
+          }
+
+          grid.append(el);
+        });
+        
+        card.append(grid);target.append(card);}
+    });
+    if(!found)target.innerHTML='<div class="panel empty">No photos or videos have been shared yet.</div>';
+  }catch(e){target.textContent="Unable to load media: "+e.message;}
+}
+
       const p=d.data();
       if(p.media?.length){found++;const card=document.createElement("div");card.className="post panel";
         const h=document.createElement("strong");h.textContent=p.name||"Member";card.append(h);
@@ -694,6 +754,28 @@ async function loadMediaFeed(){
     if(!found)target.innerHTML='<div class="panel empty">No photos or videos have been shared yet.</div>';
   }catch(e){target.textContent="Unable to load media: "+e.message;}
 }
+  // --- ഇമേജ് മോഡൽ ഫങ്ഷനുകൾ ---
+function openImageModal(url) {
+  $("modalImg").src = url;
+  $("imageModal").classList.remove("hidden");
+}
+
+$("closeModal").onclick = () => {
+  $("imageModal").classList.add("hidden");
+};
+
+$("imageModal").onclick = (e) => {
+  if (e.target !== $("modalImg")) {
+    $("imageModal").classList.add("hidden");
+  }
+};
+
 </script>
+  <!-- Image Lightbox Modal -->
+<div id="imageModal" class="img-modal hidden">
+  <button class="close-modal" id="closeModal">&times;</button>
+  <img id="modalImg" src="" alt="Full view">
+</div>
+
 </body>
 </html>
