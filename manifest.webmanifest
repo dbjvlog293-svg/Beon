@@ -1,0 +1,19 @@
+{
+  "name": "Chat City",
+  "short_name": "Chat City",
+  "description": "Chat City social network and private messaging",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#e7ecff",
+  "theme_color": "#1659e6",
+  "icons": [
+    {
+      "src": "./chat-city-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
