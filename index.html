@@ -884,8 +884,6 @@ onAuthStateChanged(auth, async current => {
   }
   try { listenGlobalMessages(); }
   catch(e) { console.error("Messages listener failed:",e); }
-  try { await openChatFromUrl(); }
-  catch(e) { console.error("Linked chat startup failed:",e); }
 });
 
 $("logoutBtn").onclick = async () => { try{ await signOut(auth); }catch(e){alert(e.message);} };
@@ -1226,16 +1224,8 @@ $("searchInput").addEventListener("input",()=>{if($("peopleView").classList.cont
 
 async function openDM(person){
   if(!user || !person?.uid)return;
-  const followId=`${user.uid}_${person.uid}`;
-  const reverseId=`${person.uid}_${user.uid}`;
-  const [fwd,rev]=await Promise.all([getDoc(doc(db,"follows",followId)),getDoc(doc(db,"follows",reverseId))]);
-  if(!fwd.exists() && !rev.exists() && !isOwner()){
-    const reqId=`${user.uid}_${person.uid}`;
-    const existing=await getDoc(doc(db,"followRequests",reqId));
-    if(!existing.exists()) await setDoc(doc(db,"followRequests",reqId),{fromUid:user.uid,fromName:user.displayName||"Member",fromPhotoURL:userProfilePhotoURL,toUid:person.uid,status:"pending",createdAt:serverTimestamp()});
-    alert("Follow request sent. You can start a private chat after they accept.");
-    return;
-  }
+  // Open the private conversation directly. Firestore security rules still
+  // decide whether the current account is allowed to read/write messages.
   activePerson=person;
   const ids=[user.uid,person.uid].sort();
   activeConversation=ids.join("_");
@@ -1787,46 +1777,25 @@ async function toggleBlockCurrentPerson(){
   }catch(e){setStatus("dmStatus","Block action failed: "+e.message);}
 }
 
-// Friend/person rows now open a direct chat; no Follow button or request.
-function privateChatUrl(person){
-  const url=new URL(window.location.href);
-  url.searchParams.set("chat",person.uid);
-  return url.pathname+url.search+url.hash;
-}
+// Friend/person rows open the private chat in the current app view.
 personButton = function(person){
-  const link=document.createElement("a");link.className="contact";link.href=privateChatUrl(person);
-  link.target="_blank";link.rel="noopener noreferrer";
-  link.setAttribute("aria-label",`Open private chat with ${person.name||"Member"} in a new tab`);
-  link.appendChild(makeAvatar(person.name,person.profilePhotoURL));
-  const info=document.createElement("span");info.className="contact-info";
-  info.append(safeTextNode("strong",person.name||"Member"),safeTextNode("small","Open private chat · New tab"));
-  link.append(info);
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.className="contact";
+  btn.appendChild(makeAvatar(person.name,person.profilePhotoURL));
+  const info=document.createElement("span");
+  info.className="contact-info";
+  info.append(safeTextNode("strong",person.name||"Member"),
+              safeTextNode("small","Open private chat"));
+  btn.append(info);
   const dot=document.createElement("span");
   const online=!!(person.lastSeen?.toDate&&Date.now()-person.lastSeen.toDate().getTime()<5*60*1000);
-  dot.className="online-dot "+(online?"online":"offline");dot.title=online?"Online":"Offline";link.append(dot);
-  return link;
+  dot.className="online-dot "+(online?"online":"offline");
+  dot.title=online?"Online":"Offline";
+  btn.append(dot);
+  btn.onclick=()=>openDM(person);
+  return btn;
 };
-
-async function openChatFromUrl(){
-  if(!user)return;
-  const targetUid=new URLSearchParams(window.location.search).get("chat");
-  if(!targetUid||targetUid===user.uid)return;
-  try{
-    const cached=allUsers.find(p=>p.uid===targetUid);
-    let person=cached;
-    if(!person){
-      const snapshot=await getDoc(doc(db,"users",targetUid));
-      if(!snapshot.exists())throw new Error("This member could not be found.");
-      person={uid:targetUid,...snapshot.data()};
-    }
-    await openDM(person);
-    const cleanUrl=new URL(window.location.href);cleanUrl.searchParams.delete("chat");
-    history.replaceState({},"",cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
-  }catch(error){
-    console.error("Could not open linked private chat:",error);
-    setStatus("dmStatus","Could not open linked chat: "+error.message);
-  }
-}
 
 async function renderPrivateChatList(){
   const target=$("privateChatList");if(!target||!user)return;
